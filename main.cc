@@ -509,8 +509,9 @@ public:
     tty.c_cflag &= ~(PARENB|CSTOPB|CSIZE|CRTSCTS);
     tty.c_cflag |= CS8|CREAD|CLOCAL;
 
-    tty.c_lflag &= ~(ICANON|ECHO|ECHOE|ECHONL|ISIG|IXON|IXOFF|IXANY);
+    tty.c_lflag &= ~(ICANON|ECHO|ECHOE|ECHONL|ISIG);
     tty.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL);
+    tty.c_iflag &= ~(IXON|IXOFF|IXANY);
 
     tty.c_oflag &= ~(OPOST|ONLCR);
 
@@ -612,16 +613,18 @@ public:
 
   void print_paket(uint64_t time)
   {
-    if (   _p.is_ping(0x10)
-        || _p.is_ping(0x11)
-        || _p.is_ping(0x12)
-        || _p.is_ping(0x13)
-        || _p.is_request(Var_35_fan_level)
-        || _p.is_request(Var_3a_sensors_temp)
-        || _p.is_request(Var_3b_sensors_co2)
-        || _p.is_request(Var_3c_sensors_humidity)
-        || _p.is_ack_10()
-        || _p.is_fan_no_change()
+    if (!opt_verbose
+        && (   _p.is_ping(0x10)
+            || _p.is_ping(0x11)
+            || _p.is_ping(0x12)
+            || _p.is_ping(0x13)
+            || _p.is_request(Var_35_fan_level)
+            || _p.is_request(Var_3a_sensors_temp)
+            || _p.is_request(Var_3b_sensors_co2)
+            || _p.is_request(Var_3c_sensors_humidity)
+            || _p.is_ack_10()
+            || _p.is_fan_no_change()
+           )
        )
       return;
 
@@ -1074,6 +1077,7 @@ public:
   unsigned opt_get_preheating = 0;
   bool     opt_get_run_on_time = false;
   bool     opt_get_filter_time = false;
+  bool     opt_verbose = false;
   bool     initial_temp = true;
 };
 
@@ -1106,6 +1110,8 @@ void print_help()
     " -q, --set-quiet 0|1|TIME  set quiet (disable/enable/time)\n"
     " -t, --set-time HH:MM      set time of day\n"
     " -v, --set-voltage L:V     set voltage for a certain level\n"
+    "\n"
+    "     --verbose             show incoming pakets\n"
     );
 }
 
@@ -1115,20 +1121,20 @@ static int scan_options(Kwl &kwl, int argc, char **argv)
     {
       static struct option long_opts[] =
       {
-        { "get-all",           no_argument,       0,  7, },
-        { "get-bypass",        no_argument,       0,  1, },
-        { "get-calendar",      required_argument, 0,  2, },
-        { "get-change-filter", no_argument,       0, 12, },
-        { "get-hours-on",      no_argument,       0,  3, },
-        { "get-quiet-enabled", no_argument,       0, 14, },
-        { "get-quiet-time",    no_argument,       0,  5, },
-        { "get-quiet-level",   no_argument,       0,  9, },
-        { "get-party-enabled", no_argument,       0, 13, },
-        { "get-party-time",    no_argument,       0,  6, },
-        { "get-party-level",   no_argument,       0,  8, },
-        { "get-pre-heating",   no_argument,       0, 10, },
-        { "get-voltage",       no_argument,       0,  4, },
-        { "get-run-on-time",   no_argument,       0, 11, },
+        { "get-all",           no_argument,       0,   7 },
+        { "get-bypass",        no_argument,       0,   1 },
+        { "get-calendar",      required_argument, 0,   2 },
+        { "get-change-filter", no_argument,       0,  12 },
+        { "get-hours-on",      no_argument,       0,   3 },
+        { "get-quiet-enabled", no_argument,       0,  14 },
+        { "get-quiet-time",    no_argument,       0,   5 },
+        { "get-quiet-level",   no_argument,       0,   9 },
+        { "get-party-enabled", no_argument,       0,  13 },
+        { "get-party-time",    no_argument,       0,   6 },
+        { "get-party-level",   no_argument,       0,   8 },
+        { "get-pre-heating",   no_argument,       0,  10 },
+        { "get-voltage",       no_argument,       0,   4 },
+        { "get-run-on-time",   no_argument,       0,  11 },
         { "help",              no_argument,       0, '?' },
         { "loop",              no_argument,       0, 'l' },
         { "interactive",       no_argument,       0, 'i' },
@@ -1136,7 +1142,8 @@ static int scan_options(Kwl &kwl, int argc, char **argv)
         { "set-fan",           required_argument, 0, 'f' },
         { "set-party",         required_argument, 0, 'p' },
         { "set-time",          required_argument, 0, 't' },
-        { "set-voltage",       required_argument, 0, 'v' }
+        { "set-voltage",       required_argument, 0, 'v' },
+        { "verbose",           no_argument,       0,  15 }
       };
 
       int opts_index;
@@ -1324,6 +1331,10 @@ static int scan_options(Kwl &kwl, int argc, char **argv)
 
         case 14:
           kwl.opt_get_quiet_enabled = true;
+          break;
+
+        case 15:
+          kwl.opt_verbose = true;
           break;
 
         default:
