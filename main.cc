@@ -384,9 +384,17 @@ public:
     printf("\033[32mtemp\033[m ");
     for (unsigned i = 0; i < 10; ++i)
       {
-        uint16_t v = *(uint16_t *)(_buf + 4 + 2*i);
+        int16_t v = *(int16_t *)(_buf + 4 + 2*i);
         if (v != 9990)
-          printf("%d.%d°C ", v / 10, v % 10);
+          {
+            char const *sign = "";
+            if (v < 0)
+              {
+                v = -v;
+                sign = "-";
+              }
+            printf("%s%d.%d°C ", sign, v / 10, v % 10);
+          }
       }
     putchar('\n');
   }
@@ -415,7 +423,7 @@ public:
     putchar('\n');
   }
 
-  void print_status(uint16_t *temp, uint16_t bypass, uint16_t party,
+  void print_status(int16_t *temp, uint16_t bypass, uint16_t party,
                     uint16_t quiet, bool at_bottom) const
   {
     if (_size != 27)
@@ -442,11 +450,19 @@ public:
            _buf[3], _buf[5], _buf[6], _buf[7], _buf[8],
            _buf[10] ? "\033[32mauto\033[m" : "\033[31mMANUAL\033[m", _buf[9]);
     for (unsigned i = 0; i < 4; ++i)
-      if (temp[i] != 9990)
-        {
-          unsigned j = temp_idx[i];
-          printf("%s%d.%d°C ", temp_symbol[j], temp[j] / 10, temp[j] % 10);
-        }
+      {
+        unsigned j = temp_idx[i];
+        if (int16_t t = temp[j]; t != 9990)
+          {
+            char const *sign = "";
+            if (t < 0)
+              {
+                t = -t;
+                sign = "-";
+              }
+            printf("%s%s%d.%d°C ", temp_symbol[j], sign, t / 10, t % 10);
+          }
+      }
     if (bypass != 0xffff)
       printf("bypass %u.%u°C ", bypass / 10, bypass % 10);
     if (party != 0)
@@ -636,7 +652,7 @@ public:
 
     else if (false) // print all pakets
       {
-        printf("%4lldms (%02x) ", time / 1000000, buf[0]);
+        printf("%4ldms (%02x) ", time / 1000000, buf[0]);
         _p.print("\033[1m", true); // uninterpreted
       }
 
@@ -654,8 +670,16 @@ public:
       }
 
     else if (_p.is_status(Var_0e_preheat_temp, 3))
-      printf("\033[32mpre-heating\033[m = %d.%d°C\n",
-             _p.u16(0) / 10, _p.u16(0) % 10);
+      {
+        int16_t t = _p.u16(0);
+        char const *sign = "";
+        if (t < 0)
+          {
+            t = -t;
+            sign = "-";
+          }
+        printf("\033[32mpre-heating\033[m = %s%d.%d°C\n", sign, t / 10, t % 10);
+      }
 
     else if (_p.is_status(Var_10_party_curr_time, 3))
       {
@@ -771,7 +795,7 @@ public:
 
     else
       {
-        printf("%4lldms (%02x) ", time / 1000000, buf[0]);
+        printf("%4ldms (%02x) ", time / 1000000, buf[0]);
         _p.print("\033[1m", true); // uninterpreted
       }
   }
@@ -813,7 +837,7 @@ public:
         && !_p.is_ping(0x51) && !_p.is_ping(0x52)
         && !_p.is_ping(0x54) && !_p.is_ping(0x58))
       {
-        printf("%4lldms ", time / 1000000);
+        printf("%4ldms ", time / 1000000);
         _p.print("\033[31munknown ", true);
       }
   }
@@ -1039,7 +1063,7 @@ public:
 
 private:
   Paket _p;
-  uint16_t _temp[4] =
+  int16_t _temp[4] =
   {
     9990, // ↓ Außen
     9990, // ← Abluft
